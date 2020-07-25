@@ -4,9 +4,9 @@
 #include <vector>
 #include <string>
 
-typedef std::vector<double> vecS;
+typedef std::vector<double> vecD;
 
-void print(vecS x, std::string str)
+void print(vecD x, std::string str)
 {
 	std::cout << str << "\n";
 	for (auto p = x.begin(); p != x.end(); p++) {
@@ -18,12 +18,12 @@ void print(vecS x, std::string str)
 struct NOFUNC
 {
 public:
-	static vecS forward(const vecS& in)
+	static vecD forward(const vecD& in)
 	{
 		return in;
 	}
 
-	static vecS backward(const vecS& in)
+	static vecD backward(const vecD& in)
 	{
 		return in;
 	}
@@ -33,22 +33,23 @@ template<typename Func = NOFUNC>
 class Square 
 {
 public:
-	static vecS tempdata;
-	static vecS forward(const vecS& in)
+	typedef vecD Type;
+	static vecD tempdata;
+	static vecD forward(const vecD& in)
 	{
 		auto temp = Func::forward(in);
 		Square<Func>::tempdata = temp;
-		vecS o;
+		vecD o;
 		for (auto p = temp.begin(); p != temp.end(); p++) {
 			o.push_back(pow(*p, 2));
 		}
 		return o;
 	}
 
-	static vecS backward(const vecS& grad)
+	static vecD backward(const vecD& grad)
 	{
 		auto temp = Func::backward(grad);
-		vecS o;
+		vecD o;
 		for (int i = 0; i < temp.size(); i++) {
 			o.push_back(2 * temp[i] * Square<Func>::tempdata[i]);
 		}
@@ -61,22 +62,23 @@ template<typename Func = NOFUNC>
 class Exp 
 {
 public:
-	static vecS tempdata;
-	static vecS forward(const vecS& in)
+	typedef vecD Type;
+	static vecD tempdata;
+	static vecD forward(const vecD& in)
 	{
 		auto x = Func::forward(in);
 		Exp<Func>::tempdata = x;
-		vecS o;
+		vecD o;
 		for (auto p = x.begin(); p != x.end(); p++) {
 			o.push_back(exp(*p));
 		}
 		return o;
 	}
 
-	static vecS backward(const vecS& grad)
+	static vecD backward(const vecD& grad)
 	{
 		auto temp = Func::backward(grad);
-		vecS o;
+		vecD o;
 		for (int i = 0; i < temp.size(); i++) {
 			o.push_back(temp[i] * exp(Exp<Func>::tempdata[i]));
 		}
@@ -85,15 +87,52 @@ public:
 };
 
 template<typename Func>
-vecS Square<Func>::tempdata;
+vecD Square<Func>::tempdata;
 template<typename Func>
-vecS Exp<Func>::tempdata;
+vecD Exp<Func>::tempdata;
+
+struct Forward;
+struct Backward;
+
+template <typename Func,typename Mode>
+class Diff;
+
+template <typename Func>
+class Diff<Func,Forward>
+{
+public:
+	typedef typename Func::Type DataType;
+	static DataType get(DataType& in)
+	{
+		return 	Func::forward(in);
+	}
+};
+
+template <typename Func>
+class Diff<Func,Backward>
+{
+public:
+	typedef typename Func::Type DataType;
+	static DataType get(DataType& in)
+	{
+		return Func::backward(in);
+	}
+};
+
 
 int main()
 {
-	vecS var(3, 0.5f), grad(3, 1.0f);
+	vecD var(3, 0.5f), grad(3, 1.0f);
+	typedef Square<Exp<Square<>>> Func;
 
-	Square<Exp<Square<>>> func;
+	/*
+	//1
+	Func func;
 	print(func.forward(var),"forward");
 	print(func.backward(grad),"backward");
+	*/
+
+	//or 2
+	print(Diff<Func,Forward>::get(var), "forward");
+	print(Diff<Func,Backward>::get(grad), "backward");
 }
